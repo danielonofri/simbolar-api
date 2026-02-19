@@ -53,8 +53,8 @@ app.get('/api/Sensores/estado', (req, res) => {
 // Servir archivos estáticos de Vue
 app.use(express.static(path.join(__dirname, 'client', 'dist')));
 
-// Cualquier ruta no-API devuelve index.html
-app.get('*', (req, res) => {
+// Cualquier ruta que no empiece con /api devuelve index.html
+app.get(/^(?!\/api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
 });
 
