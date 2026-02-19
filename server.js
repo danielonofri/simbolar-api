@@ -50,8 +50,10 @@ app.get('/api/Sensores/estado', (req, res) => {
   res.json({ devolver: { Sensores: ultimoDato, Comandos: ultimoComando } });
 });
 
-// --- SERVIR VUE ---
+// Servir archivos estáticos de Vue
 app.use(express.static(path.join(__dirname, 'client', 'dist')));
+
+// Cualquier ruta no-API devuelve index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
 });
