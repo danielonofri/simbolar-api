@@ -62,7 +62,6 @@ app.get('/api/Sensores/estado', (req, res) => {
 // Servir archivos estáticos de Vue
 app.use(express.static(path.join(__dirname, 'client', 'dist')));
 
-
 // Servir archivos estáticos de Vue
 app.use(express.static(path.join(__dirname, 'client', 'dist')));
 
