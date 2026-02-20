@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 
 // --- 1. CONFIGURACIÓN DE LA API ---
-const API_BASE = 'http://45.234.117.236:54625/api/Sensores';
+const API_BASE = 'https://simbolar-api-1bc5.onrender.com/api/Sensores';
 
 // --- 2. ESTADO DE LA APLICACIÓN ---
 const porcentaje = ref(0)
