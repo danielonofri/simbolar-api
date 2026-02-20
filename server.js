@@ -6,6 +6,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- RUTAS API ---
+// (todas tus rutas /api/... van aquí)
+app.post('/api/Sensores', (req, res) => { ... });
+app.get('/api/Sensores/comandos', (req, res) => { ... });
+app.post('/api/Sensores/comandos', (req, res) => { ... });
+app.get('/api/Sensores/estado', (req, res) => { ... });
+
+
+
 // --- MEMORIA ---
 let ultimoComando = {
   relay1ON: false,
@@ -53,14 +62,14 @@ app.get('/api/Sensores/estado', (req, res) => {
 // Servir archivos estáticos de Vue
 app.use(express.static(path.join(__dirname, 'client', 'dist')));
 
-// Cualquier ruta que no empiece con /api devuelve index.html
-app.get(/^(?!\/api).*/, (req, res) => {
-  res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
-});
 
-// --- ARRANCAR SERVIDOR ---
-const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0'; // necesario para Render y otros hostings
-app.listen(PORT, HOST, () => {
-  console.log(`Simbolar API + Vue corriendo en http://${HOST}:${PORT}`);
+// Servir archivos estáticos de Vue
+app.use(express.static(path.join(__dirname, 'client', 'dist')));
+
+// Catch-all: cualquier ruta que no sea /api devuelve index.html
+app.get('/*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).send('Not Found');
+  }
+  res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
 });
