@@ -132,7 +132,7 @@ onMounted(() => {
 });
 </script>
 
-<template>
+
   <div class="contenedor">
     <h1 class="titulo">💧 AguaSimbolar</h1>
 
@@ -158,7 +158,35 @@ onMounted(() => {
         <span v-else>Enviando...</span>
       </button>
     </div>
+    
+  </div>
+</template> -->
+<template>
+  <div class="contenedor">
+    <h1 class="titulo">💧 AguaSimbolar</h1>
+    
+    <div v-if="errorApi" class="error">{{ errorApi }}</div>
+
+    <div class="tanque-container">
+      <div class="tanque-cuerpo">
+        <div class="agua" :style="{ height: porcentaje + '%', backgroundColor: colorAgua }">
+          <div class="ola" :style="{ backgroundImage: `linear-gradient(45deg, ${colorAgua} 25%, transparent 25%, transparent 50%, ${colorAgua} 50%, ${colorAgua} 75%, transparent 75%, transparent)` }"></div>
+        </div>
+        <div class="texto-porcentaje">{{ porcentaje }}%</div>
+      </div>
+      <p class="texto-altura">Nivel de agua: {{ altura }} cm</p>
+    </div>
+
     <div class="controles">
+      <button 
+        @click="alternarLCD" 
+        :class="['btn-lcd', lcdEncendido ? 'encendido' : 'apagado']"
+        :disabled="cargando">
+        <span v-if="!cargando">
+          {{ lcdEncendido ? 'Apagar Display' : 'Encender Display' }}
+        </span>
+        <span v-else>Enviando...</span>
+      </button>
     </div>
 
     <div class="debug-box">
@@ -168,9 +196,6 @@ onMounted(() => {
 
   </div>
 </template>
-</div>
-</template>
-
 <style scoped>
 /* ESTILOS (Mantenemos los mismos) */
 .contenedor {
@@ -286,5 +311,17 @@ onMounted(() => {
 
 .btn-lcd:disabled {
   opacity: 0.6;
+}
+
+.debug-box {
+  margin-top: 30px;
+  background-color: #111;
+  color: #00ff00;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: left;
+  font-family: monospace;
+  font-size: 0.85em;
+  overflow-x: auto;
 }
 </style>

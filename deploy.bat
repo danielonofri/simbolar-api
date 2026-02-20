@@ -15,5 +15,5 @@ if "%PARAMETRO%"=="" (
 
 
 git add .
-git commit -m %RESULTADO%
+git commit -m "%RESULTADO%"
 git push origin main
