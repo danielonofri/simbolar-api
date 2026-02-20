@@ -129,12 +129,9 @@ const toggleCajaNegra = () => {
       </a>
     </div>
 
-    <div v-if="mostrarCajaNegra" class="caja-negra-container">
-      <pre class="json-debug">
-    {{ JSON.stringify(datosAPI, null, 2) }}
-  </pre>
+    <div v-if="mostrarCajaNegra" class="caja-negra">
+      <pre>{{ rawData }}</pre>
     </div>
-
   </div>
 </template>
 
