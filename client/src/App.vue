@@ -122,30 +122,33 @@ const toggleCajaNegra = () => {
         <span v-else>Enviando...</span>
       </button>
     </div>
+    <div class="debug-section">
+      <button @click="mostrarCajaNegra = !mostrarCajaNegra" class="btn-debug">
+        {{ mostrarCajaNegra ? '▲ Ocultar estado' : '▼ Último estado' }}
+      </button>
 
-    <div class="debug-link-container">
-      <a href="#" @click.prevent="toggleCajaNegra" class="debug-link">
-        {{ mostrarCajaNegra ? 'Ocultar estado' : 'Último estado' }}
-      </a>
-    </div>
-
-    <div v-if="mostrarCajaNegra" class="caja-negra">
-      <pre>{{ rawData }}</pre>
+      <div v-if="mostrarCajaNegra" class="caja-negra">
+        <pre><code>{{ rawData }}</code></pre>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.container { 
+.container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  
+
   /* CAMBIA ESTO: */
-  justify-content: flex-start; /* En lugar de center, que empiece arriba */
-  min-height: 100vh;           /* Asegura que ocupe todo el alto */
-  padding-top: 50px;           /* Dale un aire arriba para que el título no pegue al borde */
-  padding-bottom: 50px;        /* Para que la caja negra no pegue al fondo al abrirse */
+  justify-content: flex-start;
+  /* En lugar de center, que empiece arriba */
+  min-height: 100vh;
+  /* Asegura que ocupe todo el alto */
+  padding-top: 50px;
+  /* Dale un aire arriba para que el título no pegue al borde */
+  padding-bottom: 50px;
+  /* Para que la caja negra no pegue al fondo al abrirse */
 }
 
 .titulo {
