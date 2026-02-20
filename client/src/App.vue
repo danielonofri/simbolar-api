@@ -59,7 +59,6 @@ const obtenerDatos = async () => {
   }
 };
 
-// --- 5. FUNCIÓN POST: ENVIAR COMANDO ---
 const alternarLCD = async () => {
   cargando.value = true;
   errorApi.value = '';
@@ -75,12 +74,18 @@ const alternarLCD = async () => {
   };
 
   try {
+    // 1. Enviamos el comando a la API
     await axios.post(`${API_BASE}/comandos`, payload);
+
+    // 2. Si la API responde OK, actualizamos la interfaz
     lcdEncendido.value = nuevoEstado;
+    cargando.value = false;
   } catch (error) {
-    // Esto te va a mostrar en la consola de F12 el mensaje real del servidor
-    console.error("DETALLE DEL ERROR:", error.response?.data || error.message);
-    errorApi.value = 'Error al cambiar el LCD: ' + (error.response?.data?.message || '');
+    // 3. Si hay error, lo mostramos en la consola para saber qué falló
+    console.error("DETALLE DEL FALLO:", error.response?.data || error.message);
+
+    errorApi.value = 'Error al cambiar el LCD';
+    cargando.value = false;
   }
 };
 
