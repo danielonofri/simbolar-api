@@ -32,7 +32,7 @@ app.post("/api/Sensores", (req, res) => {
   const { distancia, p_in } = req.body;
 
   // A. Cálculos de nivel de agua (Lo hace el server, no el Arduino)
-  let altura = (ultimoDato.tank_h + ltimoDato.sensor_m) - distancia;
+  let altura = (ultimoDato.tank_h + ultimoDato.sensor_m) - distancia;
   let porc = Math.round(altura/ ultimoDato.tank_h  * 100,0);
   if (porc < 0) porc = 0;
   if (porc > 100) porc = 100;
