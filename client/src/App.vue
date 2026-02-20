@@ -12,6 +12,7 @@ const lcdEncendido = ref(true)
 const cargando = ref(false)
 const errorApi = ref('')
 const rawData = ref('');
+const mostrarCajaNegra = ref(false);
 
 const relays = ref({
   relay1ON: false,
@@ -89,18 +90,24 @@ onMounted(() => {
   obtenerDatos();
   setInterval(obtenerDatos, 3000);
 });
+
+const toggleCajaNegra = () => {
+  mostrarCajaNegra.value = !mostrarCajaNegra.value;
+};
 </script>
 
 <template>
   <div class="contenedor">
     <h1 class="titulo">📡 Agua</h1>
-    
+
     <div v-if="errorApi" class="error">{{ errorApi }}</div>
 
     <div class="tanque-container">
       <div class="tanque-cuerpo">
         <div class="agua" :style="{ height: porcentaje + '%', backgroundColor: colorAgua }">
-          <div class="ola" :style="{ backgroundImage: `linear-gradient(45deg, ${colorAgua} 25%, transparent 25%, transparent 50%, ${colorAgua} 50%, ${colorAgua} 75%, transparent 75%, transparent)` }"></div>
+          <div class="ola"
+            :style="{ backgroundImage: `linear-gradient(45deg, ${colorAgua} 25%, transparent 25%, transparent 50%, ${colorAgua} 50%, ${colorAgua} 75%, transparent 75%, transparent)` }">
+          </div>
         </div>
         <div class="texto-porcentaje">{{ porcentaje }}%</div>
       </div>
@@ -108,10 +115,7 @@ onMounted(() => {
     </div>
 
     <div class="controles">
-      <button 
-        @click="alternarLCD" 
-        :class="['btn-lcd', lcdEncendido ? 'encendido' : 'apagado']"
-        :disabled="cargando">
+      <button @click="alternarLCD" :class="['btn-lcd', lcdEncendido ? 'encendido' : 'apagado']" :disabled="cargando">
         <span v-if="!cargando">
           {{ lcdEncendido ? 'Apagar Display' : 'Encender Display' }}
         </span>
@@ -119,9 +123,16 @@ onMounted(() => {
       </button>
     </div>
 
-    <div class="debug-box">
-      <p style="margin: 0 0 5px 0; color: #f1c40f;">📡 Respuesta de la API:</p>
-      <pre>{{ rawData }}</pre>
+    <div class="debug-link-container">
+      <a href="#" @click.prevent="toggleCajaNegra" class="debug-link">
+        {{ mostrarCajaNegra ? 'Ocultar estado' : 'Último estado' }}
+      </a>
+    </div>
+
+    <div v-if="mostrarCajaNegra" class="caja-negra-container">
+      <pre class="json-debug">
+    {{ JSON.stringify(datosAPI, null, 2) }}
+  </pre>
     </div>
 
   </div>
@@ -188,8 +199,13 @@ onMounted(() => {
 }
 
 @keyframes moverOla {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 .texto-porcentaje {
