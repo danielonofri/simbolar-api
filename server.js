@@ -6,14 +6,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- RUTAS API ---
-// (todas tus rutas /api/... van aquí)
-app.post('/api/Sensores', (req, res) => { ... });
-app.get('/api/Sensores/comandos', (req, res) => { ... });
-app.post('/api/Sensores/comandos', (req, res) => { ... });
-app.get('/api/Sensores/estado', (req, res) => { ... });
-
-
 
 // --- MEMORIA ---
 let ultimoComando = {
