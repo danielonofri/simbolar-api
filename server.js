@@ -1,6 +1,6 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
 const app = express();
 
 app.use(cors());
@@ -12,62 +12,112 @@ let ultimoComando = {
   relay2ON: false,
   relay3ON: false,
   relay4ON: false,
-  lcd: true
+  lcd: true,
+  p_out: 16, // 16 en binario es 10000 (Bit 4 encendido, asignado al LCD)
 };
 
 let ultimoDato = {
-  altura_agua: -1,
+  distancia: -1,
+  altura_agua: 0,
   porcentaje: 0,
-  tank_h: 300,
-  sensor_m: 30,
-  delta_max: 0,
-  Boton1: "OFF",
-  Boton2: "OFF",
-  Boton3: "OFF",
-  Boton4: "OFF"
+  tank_h: 300, // Altura total del tanque
+  sensor_m: 30, // Distancia mínima del sensor al nivel máximo
+  p_in: 0, // Byte crudo que llega del Arduino
+  botones: { b1: false, b2: false, b3: false, b4: false },
 };
 
 // --- RUTAS API ---
+// 1. Recibe del NodeMCU: { "distancia": 45.5, "p_in": 5 }
+app.post("/api/Sensores", (req, res) => {
+  const { distancia, p_in } = req.body;
+
+  // A. Cálculos de nivel de agua (Lo hace el server, no el Arduino)
+  let altura = ultimoDato.tank_h - distancia;
+  let porc = Math.round(
+    (altura / (ultimoDato.tank_h - ultimoDato.sensor_m)) * 100,
+  );
+  if (porc < 0) porc = 0;
+  if (porc > 100) porc = 100;
+
+  // B. Desempaquetar los bits de los botones para mostrarlos en Vue si quieres
+  let b1 = (p_in & 1) !== 0; // Bit 0
+  let b2 = (p_in & 2) !== 0; // Bit 1
+  let b3 = (p_in & 4) !== 0; // Bit 2
+  let b4 = (p_in & 8) !== 0; // Bit 3
+
+  // C. Guardar en memoria
+  ultimoDato.distancia = distancia;
+  ultimoDato.p_in = p_in;
+  ultimoDato.altura_agua = altura;
+  ultimoDato.porcentaje = porc;
+  ultimoDato.botones = { b1, b2, b3, b4 };
+
+  console.log(
+    `NodeMCU -> Dist: ${distancia}, p_in: ${p_in} (Botones: ${b4 ? 1 : 0}${b3 ? 1 : 0}${b2 ? 1 : 0}${b1 ? 1 : 0})`,
+  );
+
+  // D. Responder al NodeMCU con el byte empaquetado p_out
+  res.json({ p_out: ultimoComando.p_out });
+});
+
+// 2. Recibe del Frontend Vue: { relay1ON: true, ..., lcd: false }
+// 1. Recibe del NodeMCU: { "distancia": 45.5, "p_in": 5, "tank_h": 300, "sensor_m": 30, "delta_max": 5 }
 app.post('/api/Sensores', (req, res) => {
-  const data = req.body;
-  ultimoDato = data;
-  console.log(`Recibido: Altura=${data.altura_agua}, Porc=${data.porcentaje}%`);
-  res.json({ status: "ok", lcd: ultimoComando.lcd });
+  const { distancia, p_in, tank_h, sensor_m, delta_max } = req.body;
+  
+  // A. Actualizar parámetros de calibración si vienen en el payload
+  if (tank_h !== undefined) ultimoDato.tank_h = tank_h;
+  if (sensor_m !== undefined) ultimoDato.sensor_m = sensor_m;
+  if (delta_max !== undefined) ultimoDato.delta_max = delta_max;
+
+  // B. Cálculos de nivel de agua (usando los parámetros actualizados)
+  let altura = ultimoDato.tank_h - distancia;
+  let porc = Math.round((altura / (ultimoDato.tank_h - ultimoDato.sensor_m)) * 100);
+  if (porc < 0) porc = 0;
+  if (porc > 100) porc = 100;
+
+  // C. Desempaquetar los bits de los botones
+  let b1 = (p_in & 1) !== 0; // Bit 0
+  let b2 = (p_in & 2) !== 0; // Bit 1
+  let b3 = (p_in & 4) !== 0; // Bit 2
+  let b4 = (p_in & 8) !== 0; // Bit 3
+
+  // D. Guardar en memoria
+  ultimoDato.distancia = distancia;
+  ultimoDato.p_in = p_in;
+  ultimoDato.altura_agua = altura;
+  ultimoDato.porcentaje = porc;
+  ultimoDato.botones = { b1, b2, b3, b4 };
+
+  console.log(`[Sensor] Dist: ${distancia} | p_in: ${p_in} | Tanque: ${ultimoDato.tank_h} | SensorM: ${ultimoDato.sensor_m} | DeltaMax: ${ultimoDato.delta_max}`);
+  
+  // E. Responder al NodeMCU con el byte empaquetado p_out
+  res.json({ p_out: ultimoComando.p_out });
 });
 
-app.get('/api/Sensores', (req, res) => {
-  res.json({ status: "API en línea. Usa POST para enviar datos al Arduino." });
-});
-
-app.get('/api/Sensores/comandos', (req, res) => {
-  res.json(ultimoComando);
-});
-
-app.post('/api/Sensores/comandos', (req, res) => {
-  const comandos = req.body;
-  ultimoComando = comandos;
-  console.log(`Comandos actualizados: R1=${comandos.relay1ON}, LCD=${comandos.lcd}`);
-  res.json({ status: "comandos actualizados" });
-});
-
-app.get('/api/Sensores/estado', (req, res) => {
+// 3. Envía el estado al Frontend Vue
+app.get("/api/Sensores/estado", (req, res) => {
   res.json({ devolver: { Sensores: ultimoDato, Comandos: ultimoComando } });
 });
 
+app.get("/api/Sensores/comandos", (req, res) => {
+  res.json(ultimoComando);
+});
+
 // --- FRONTEND VUE ---
-app.use(express.static(path.join(__dirname, 'client', 'dist')));
+app.use(express.static(path.join(__dirname, "client", "dist")));
 
 // Catch-all: cualquier ruta que no sea /api devuelve index.html
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) {
+  if (req.path.startsWith("/api")) {
     return next(); // deja que las rutas API se manejen arriba
   }
-  res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, "client", "dist", "index.html"));
 });
 
 // --- ARRANCAR SERVIDOR ---
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0'; // necesario para Render y otros hostings
+const HOST = "0.0.0.0"; // necesario para Render y otros hostings
 app.listen(PORT, HOST, () => {
   console.log(`Simbolar API + Vue corriendo en http://${HOST}:${PORT}`);
 });
