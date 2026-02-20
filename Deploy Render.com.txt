@@ -1,0 +1,39 @@
+==> Cloning from https://github.com/danielonofri/simbolar-api
+==> Checking out commit d4bac7217074b0dd3b2719b9eaab5e8bdf3ef591 in branch main
+==> Using Node.js version 22.22.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm run build-client'...
+> simbolar-api@1.0.0 build-client
+> cd client && npm install && npm run build
+added 58 packages, and audited 59 packages in 2s
+12 packages are looking for funding
+  run `npm fund` for details
+found 0 vulnerabilities
+> agua-simbolar@0.0.0 build
+> vite build
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 62 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                  0.46 kB │ gzip:  0.29 kB
+dist/assets/index-Dgof-hFr.css   2.66 kB │ gzip:  1.11 kB
+dist/assets/index--3CosRe5.js   99.23 kB │ gzip: 39.27 kB
+✓ built in 900ms
+==> Uploading build...
+==> Uploaded in 3.8s. Compression took 1.1s
+==> Build successful 🎉
+==> Setting WEB_CONCURRENCY=1 by default, based on available CPUs in the instance
+==> Deploying...
+==> Running 'npm start'
+> simbolar-api@1.0.0 start
+> node server.js
+Menu
+Simbolar API + Vue corriendo en http://0.0.0.0:10000
+==> Your service is live 🎉
+==> 
+==> ///////////////////////////////////////////////////////////
+==> 
+==> Available at your primary URL https://simbolar-api-4.onrender.com
+==> 
+==> ///////////////////////////////////////////////////////////
