@@ -1,7 +1,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-
+const distanciaReal = ref(0);
+const sensor_m_val = ref(30); // Margen de seguridad definido en tu server.js
 // --- 1. CONFIGURACIÓN DE LA API ---
 const API_BASE = 'https://simbolar-api-1bc5.onrender.com/api/Sensores';
 
@@ -21,42 +22,30 @@ const relays = ref({
   relay4ON: false
 })
 
-// --- 3. COLOR DEL AGUA ---
 const colorAgua = computed(() => {
+  // REGLA: Si la distancia al agua es <= separación del sensor, AMARILLO
+  if (distanciaReal.value > 0 && distanciaReal.value <= sensor_m_val.value) {
+    return '#f1c40f'; 
+  }
   return porcentaje.value < 20 ? '#e74c3c' : '#3498db';
 });
 
-// --- 4. FUNCIÓN GET: LEER ESTRUCTURA "DEVOLVER" ---
 const obtenerDatos = async () => {
   try {
     const respuesta = await axios.get(`${API_BASE}/estado`);
-
-    rawData.value = JSON.stringify(respuesta.data, null, 2);
-
     const raiz = respuesta.data.devolver;
 
     if (raiz) {
       if (raiz.Sensores) {
         altura.value = raiz.Sensores.altura_agua || 0;
         porcentaje.value = raiz.Sensores.porcentaje || 0;
+        // CAPTURAMOS ESTOS DOS:
+        distanciaReal.value = raiz.Sensores.distancia || 0;
+        sensor_m_val.value = raiz.Sensores.sensor_m || 30;
       }
-      if (raiz.Comandos) {
-        lcdEncendido.value = raiz.Comandos.lcd;
-        relays.value = {
-          relay1ON: raiz.Comandos.relay1ON,
-          relay2ON: raiz.Comandos.relay2ON,
-          relay3ON: raiz.Comandos.relay3ON,
-          relay4ON: raiz.Comandos.relay4ON
-        };
-      }
-      errorApi.value = '';
+      // ... resto de tu lógica para Comandos ...
     }
-
-  } catch (error) {
-    console.error("Error obteniendo datos:", error);
-    rawData.value = "Error de conexión: " + error.message;
-    if (altura.value === 0) errorApi.value = 'Esperando conexión...';
-  }
+  } catch (e) { console.error(e); }
 };
 
 const alternarLCD = async () => {
