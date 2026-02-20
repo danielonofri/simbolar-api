@@ -136,16 +136,16 @@ const toggleCajaNegra = () => {
 </template>
 
 <style scoped>
-.contenedor {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  text-align: center;
-  max-width: 500px;
-  margin: 30px auto;
-  padding: 20px;
-  background-color: #2c3e50;
-  border-radius: 15px;
-  color: white;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+.container { 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  /* CAMBIA ESTO: */
+  justify-content: flex-start; /* En lugar de center, que empiece arriba */
+  min-height: 100vh;           /* Asegura que ocupe todo el alto */
+  padding-top: 50px;           /* Dale un aire arriba para que el título no pegue al borde */
+  padding-bottom: 50px;        /* Para que la caja negra no pegue al fondo al abrirse */
 }
 
 .titulo {
