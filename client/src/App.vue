@@ -25,7 +25,7 @@ const relays = ref({
 const colorAgua = computed(() => {
   // REGLA: Si la distancia al agua es <= separación del sensor, AMARILLO
   if (distanciaReal.value > 0 && distanciaReal.value <= sensor_m_val.value) {
-    return '#f1c40f'; 
+    return '#f1c40f';
   }
   return porcentaje.value < 20 ? '#e74c3c' : '#3498db';
 });
@@ -102,7 +102,17 @@ const toggleCajaNegra = () => {
             :style="{ backgroundImage: `linear-gradient(45deg, ${colorAgua} 25%, transparent 25%, transparent 50%, ${colorAgua} 50%, ${colorAgua} 75%, transparent 75%, transparent)` }">
           </div>
         </div>
-        <div class="texto-porcentaje">{{ porcentaje }}%</div>
+        <div class="texto-porcentaje">
+          <div v-if="distanciaReal > 0 && distanciaReal <= sensor_m_val"
+            style="display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 1.2em; filter: drop-shadow(0 0 5px rgba(0,0,0,0.2));">⚠️</span>
+            <span style="font-size: 0.4em; margin-top: -5px;">{{ distanciaReal }} cm</span>
+          </div>
+
+          <div v-else>
+            {{ porcentaje }}%
+          </div>
+        </div>
       </div>
       <p class="texto-altura">Nivel de agua: {{ altura }} cm</p>
     </div>
