@@ -63,29 +63,26 @@ app.post("/api/Sensores", (req, res) => {
 app.post('/api/Sensores', (req, res) => {
   const { distancia, p_in, tank_h, sensor_m } = req.body;
   
-  // 1. Actualizar parámetros de calibración si vienen en el JSON
-  if (tank_h !== undefined) ultimoDato.tank_h = tank_h;      // Ejemplo: 300
-  if (sensor_m !== undefined) ultimoDato.sensor_m = sensor_m;  // Ejemplo: 30
+  if (tank_h !== undefined) ultimoDato.tank_h = tank_h;
+  if (sensor_m !== undefined) ultimoDato.sensor_m = sensor_m;
 
-  // 2. Cálculos físicos (Directos, sin filtro delta)
-  // Altura del agua desde el suelo = (tanque + aire) - distancia leída
+  // --- TU LÓGICA MATEMÁTICA ---
+  // El sensor está a (300 + 30) = 330cm del suelo
   const sensor_suelo = ultimoDato.tank_h + ultimoDato.sensor_m; 
+  
+  // Altura agua = 330 - 120.5 = 209.5cm
   let alturaReal = sensor_suelo - distancia; 
   
-  // Porcentaje de llenado real del tanque (sobre la altura del tanque)
+  // Porcentaje = (209.5 / 300) * 100 = 69.83%
   let porc = Math.round((alturaReal / ultimoDato.tank_h) * 100);
 
-  // Límites lógicos de seguridad (0-100%)
   if (porc < 0) porc = 0;
   if (porc > 100) porc = 100;
 
-  // 3. Guardar en memoria
   ultimoDato.distancia = distancia;
   ultimoDato.p_in = p_in;
   ultimoDato.altura_agua = alturaReal;
   ultimoDato.porcentaje = porc;
-
-  // Desempaquetar botones (bitwise)
   ultimoDato.botones = {
     b1: (p_in & 1) !== 0,
     b2: (p_in & 2) !== 0,
@@ -93,12 +90,28 @@ app.post('/api/Sensores', (req, res) => {
     b4: (p_in & 8) !== 0
   };
 
-  console.log(`✅ NodoMCU -> Dist: ${distancia}cm | Calculado: ${porc}% Lleno`);
-  
-  // 4. Responder con los comandos empaquetados para el Arduino Uno
   res.json({ p_out: ultimoComando.p_out });
 });
 
+// 2. Endpoint para el Frontend Vue (Estado completo)
+app.get('/api/Sensores/estado', (req, res) => {
+  res.json({ devolver: { Sensores: ultimoDato, Comandos: ultimoComando } });
+});
+
+// 3. Endpoint para que el Frontend mande comandos
+app.post('/api/Sensores/comandos', (req, res) => {
+  const { relay1ON, relay2ON, relay3ON, relay4ON, lcd } = req.body;
+  
+  let p_out = 0;
+  if (relay1ON) p_out |= 1;
+  if (relay2ON) p_out |= 2;
+  if (relay3ON) p_out |= 4;
+  if (relay4ON) p_out |= 8;
+  if (lcd)      p_out |= 16;
+
+  ultimoComando = { relay1ON, relay2ON, relay3ON, relay4ON, lcd, p_out };
+  res.json({ status: "ok", p_out });
+});
 // 3. Envía el estado al Frontend Vue
 app.get("/api/Sensores/estado", (req, res) => {
   res.json({ devolver: { Sensores: ultimoDato, Comandos: ultimoComando } });
