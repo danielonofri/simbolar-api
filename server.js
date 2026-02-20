@@ -60,38 +60,52 @@ app.post("/api/Sensores", (req, res) => {
   res.json({ p_out: ultimoComando.p_out });
 });
 
-// 2. Recibe del Frontend Vue: { relay1ON: true, ..., lcd: false }
-// 1. Recibe del NodeMCU: { "distancia": 45.5, "p_in": 5, "tank_h": 300, "sensor_m": 30, "delta_max": 5 }
 app.post('/api/Sensores', (req, res) => {
   const { distancia, p_in, tank_h, sensor_m, delta_max } = req.body;
   
-  // A. Actualizar parámetros de calibración si vienen en el payload
-  if (tank_h !== undefined) ultimoDato.tank_h = tank_h;
-  if (sensor_m !== undefined) ultimoDato.sensor_m = sensor_m;
-  if (delta_max !== undefined) ultimoDato.delta_max = delta_max;
+  // 1. Actualizar parámetros de calibración si vienen en el JSON
+  if (tank_h !== undefined) ultimoDato.tank_h = tank_h;      // Ejemplo: 300
+  if (sensor_m !== undefined) ultimoDato.sensor_m = sensor_m;  // Ejemplo: 30
+  if (delta_max !== undefined) ultimoDato.delta_max = delta_max; // Ejemplo: 5
 
-  // B. Cálculos de nivel de agua (usando los parámetros actualizados)
-  let altura = ultimoDato.tank_h - distancia;
-  let porc = Math.round((altura / (ultimoDato.tank_h - ultimoDato.sensor_m)) * 100);
+  // 2. Filtro Delta Max (Validación de medidas erróneas)
+  // Si ya tenemos una medida previa y la nueva es muy dispar, la ignoramos
+  if (ultimoDato.distancia !== -1 && ultimoDato.delta_max > 0) {
+    const diferencia = Math.abs(distancia - ultimoDato.distancia);
+    if (diferencia > ultimoDato.delta_max) {
+      console.log(`⚠️ Medida descartada por Delta Max: Dif ${diferencia} > ${ultimoDato.delta_max}`);
+      return res.json({ p_out: ultimoComando.p_out, status: "ignored_by_delta" });
+    }
+  }
+
+  // 3. Cálculos físicos según tu instalación:
+  // Altura del agua desde el suelo = (tanque + aire) - distancia leída
+  const sensor_suelo = ultimoDato.tank_h + ultimoDato.sensor_m; // 300 + 30 = 330
+  let alturaReal = sensor_suelo - distancia; 
+  
+  // Porcentaje de llenado real del tanque (sobre los 300cm)
+  let porc = Math.round((alturaReal / ultimoDato.tank_h) * 100);
+
+  // Límites lógicos (0-100%)
   if (porc < 0) porc = 0;
   if (porc > 100) porc = 100;
 
-  // C. Desempaquetar los bits de los botones
-  let b1 = (p_in & 1) !== 0; // Bit 0
-  let b2 = (p_in & 2) !== 0; // Bit 1
-  let b3 = (p_in & 4) !== 0; // Bit 2
-  let b4 = (p_in & 8) !== 0; // Bit 3
-
-  // D. Guardar en memoria
+  // 4. Guardar en memoria
   ultimoDato.distancia = distancia;
   ultimoDato.p_in = p_in;
-  ultimoDato.altura_agua = altura;
+  ultimoDato.altura_agua = alturaReal;
   ultimoDato.porcentaje = porc;
-  ultimoDato.botones = { b1, b2, b3, b4 };
 
-  console.log(`[Sensor] Dist: ${distancia} | p_in: ${p_in} | Tanque: ${ultimoDato.tank_h} | SensorM: ${ultimoDato.sensor_m} | DeltaMax: ${ultimoDato.delta_max}`);
+  // Desempaquetar botones (bitwise)
+  ultimoDato.botones = {
+    b1: (p_in & 1) !== 0,
+    b2: (p_in & 2) !== 0,
+    b3: (p_in & 4) !== 0,
+    b4: (p_in & 8) !== 0
+  };
+
+  console.log(`✅ OK: Dist ${distancia}cm -> ${porc}% Lleno`);
   
-  // E. Responder al NodeMCU con el byte empaquetado p_out
   res.json({ p_out: ultimoComando.p_out });
 });
 
