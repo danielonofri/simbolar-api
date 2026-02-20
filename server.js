@@ -35,6 +35,10 @@ app.post('/api/Sensores', (req, res) => {
   res.json({ status: "ok", lcd: ultimoComando.lcd });
 });
 
+app.get('/api/Sensores', (req, res) => {
+  res.json({ status: "API en línea. Usa POST para enviar datos al Arduino." });
+});
+
 app.get('/api/Sensores/comandos', (req, res) => {
   res.json(ultimoComando);
 });
