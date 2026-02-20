@@ -61,36 +61,25 @@ app.post("/api/Sensores", (req, res) => {
 });
 
 app.post('/api/Sensores', (req, res) => {
-  const { distancia, p_in, tank_h, sensor_m, delta_max } = req.body;
+  const { distancia, p_in, tank_h, sensor_m } = req.body;
   
   // 1. Actualizar parámetros de calibración si vienen en el JSON
   if (tank_h !== undefined) ultimoDato.tank_h = tank_h;      // Ejemplo: 300
   if (sensor_m !== undefined) ultimoDato.sensor_m = sensor_m;  // Ejemplo: 30
-  if (delta_max !== undefined) ultimoDato.delta_max = delta_max; // Ejemplo: 5
 
-  // 2. Filtro Delta Max (Validación de medidas erróneas)
-  // Si ya tenemos una medida previa y la nueva es muy dispar, la ignoramos
-  if (ultimoDato.distancia !== -1 && ultimoDato.delta_max > 0) {
-    const diferencia = Math.abs(distancia - ultimoDato.distancia);
-    if (diferencia > ultimoDato.delta_max) {
-      console.log(`⚠️ Medida descartada por Delta Max: Dif ${diferencia} > ${ultimoDato.delta_max}`);
-      return res.json({ p_out: ultimoComando.p_out, status: "ignored_by_delta" });
-    }
-  }
-
-  // 3. Cálculos físicos según tu instalación:
+  // 2. Cálculos físicos (Directos, sin filtro delta)
   // Altura del agua desde el suelo = (tanque + aire) - distancia leída
-  const sensor_suelo = ultimoDato.tank_h + ultimoDato.sensor_m; // 300 + 30 = 330
+  const sensor_suelo = ultimoDato.tank_h + ultimoDato.sensor_m; 
   let alturaReal = sensor_suelo - distancia; 
   
-  // Porcentaje de llenado real del tanque (sobre los 300cm)
+  // Porcentaje de llenado real del tanque (sobre la altura del tanque)
   let porc = Math.round((alturaReal / ultimoDato.tank_h) * 100);
 
-  // Límites lógicos (0-100%)
+  // Límites lógicos de seguridad (0-100%)
   if (porc < 0) porc = 0;
   if (porc > 100) porc = 100;
 
-  // 4. Guardar en memoria
+  // 3. Guardar en memoria
   ultimoDato.distancia = distancia;
   ultimoDato.p_in = p_in;
   ultimoDato.altura_agua = alturaReal;
@@ -104,8 +93,9 @@ app.post('/api/Sensores', (req, res) => {
     b4: (p_in & 8) !== 0
   };
 
-  console.log(`✅ OK: Dist ${distancia}cm -> ${porc}% Lleno`);
+  console.log(`✅ NodoMCU -> Dist: ${distancia}cm | Calculado: ${porc}% Lleno`);
   
+  // 4. Responder con los comandos empaquetados para el Arduino Uno
   res.json({ p_out: ultimoComando.p_out });
 });
 
