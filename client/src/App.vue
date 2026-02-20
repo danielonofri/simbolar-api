@@ -25,43 +25,6 @@ const colorAgua = computed(() => {
   return porcentaje.value < 20 ? '#e74c3c' : '#3498db';
 });
 
-// // --- 4. FUNCIÓN GET: LEER ESTRUCTURA "DEVOLVER" ---
-// const obtenerDatos = async () => {
-//   try {
-//     const respuesta = await axios.get(`${API_BASE}/estado`);
-
-//     // AQUÍ ESTÁ EL CAMBIO IMPORTANTE:
-//     // Entramos a respuesta.data -> devolver
-//     const raiz = respuesta.data.devolver; 
-
-//     if (raiz) {
-//       // A. DATOS DEL SENSOR
-//       if (raiz.sensores) {
-//         // Mapeamos "altura_agua" del JSON a nuestra variable "altura"
-//         altura.value = raiz.sensores.altura_agua || 0;
-//         porcentaje.value = raiz.sensores.porcentaje || 0;
-//       }
-
-//       // B. COMANDOS
-//       if (raiz.comandos) {
-//         lcdEncendido.value = raiz.comandos.lcd; 
-
-//         relays.value = {
-//           relay1ON: raiz.comandos.relay1ON,
-//           relay2ON: raiz.comandos.relay2ON,
-//           relay3ON: raiz.comandos.relay3ON,
-//           relay4ON: raiz.comandos.relay4ON
-//         };
-//       }
-//       errorApi.value = ''; 
-//     }
-
-//   } catch (error) {
-//     console.error("Error obteniendo datos:", error);
-//     // Solo mostramos error si no tenemos datos previos para no parpadear
-//     if (altura.value === 0) errorApi.value = 'Esperando conexión...';
-//   }
-// };
 // --- 4. FUNCIÓN GET: LEER ESTRUCTURA "DEVOLVER" ---
 const obtenerDatos = async () => {
   try {
@@ -72,16 +35,12 @@ const obtenerDatos = async () => {
     const raiz = respuesta.data.devolver;
 
     if (raiz) {
-      // A. DATOS DEL SENSOR (Ojo a la 'S' mayúscula)
       if (raiz.Sensores) {
         altura.value = raiz.Sensores.altura_agua || 0;
         porcentaje.value = raiz.Sensores.porcentaje || 0;
       }
-
-      // B. COMANDOS (Ojo a la 'C' mayúscula)
       if (raiz.Comandos) {
         lcdEncendido.value = raiz.Comandos.lcd;
-
         relays.value = {
           relay1ON: raiz.Comandos.relay1ON,
           relay2ON: raiz.Comandos.relay2ON,
@@ -98,6 +57,7 @@ const obtenerDatos = async () => {
     if (altura.value === 0) errorApi.value = 'Esperando conexión...';
   }
 };
+
 // --- 5. FUNCIÓN POST: ENVIAR COMANDO ---
 const alternarLCD = async () => {
   cargando.value = true;
@@ -105,7 +65,6 @@ const alternarLCD = async () => {
 
   const nuevoEstado = !lcdEncendido.value;
 
-  // El payload sigue igual, enviamos estado de relays + lcd
   const payload = {
     relay1ON: relays.value.relay1ON,
     relay2ON: relays.value.relay2ON,
@@ -132,35 +91,6 @@ onMounted(() => {
 });
 </script>
 
-
-  <div class="contenedor">
-    <h1 class="titulo">💧 AguaSimbolar</h1>
-
-    <div v-if="errorApi" class="error">{{ errorApi }}</div>
-
-    <div class="tanque-container">
-      <div class="tanque-cuerpo">
-        <div class="agua" :style="{ height: porcentaje + '%', backgroundColor: colorAgua }">
-          <div class="ola"
-            :style="{ backgroundImage: `linear-gradient(45deg, ${colorAgua} 25%, transparent 25%, transparent 50%, ${colorAgua} 50%, ${colorAgua} 75%, transparent 75%, transparent)` }">
-          </div>
-        </div>
-        <div class="texto-porcentaje">{{ porcentaje }}%</div>
-      </div>
-      <p class="texto-altura">Nivel de agua: {{ altura }} cm</p>
-    </div>
-
-    <div class="controles">
-      <button @click="alternarLCD" :class="['btn-lcd', lcdEncendido ? 'encendido' : 'apagado']" :disabled="cargando">
-        <span v-if="!cargando">
-          {{ lcdEncendido ? 'Apagar Display' : 'Encender Display' }}
-        </span>
-        <span v-else>Enviando...</span>
-      </button>
-    </div>
-    
-  </div>
-</template> -->
 <template>
   <div class="contenedor">
     <h1 class="titulo">💧 AguaSimbolar</h1>
@@ -196,8 +126,8 @@ onMounted(() => {
 
   </div>
 </template>
+
 <style scoped>
-/* ESTILOS (Mantenemos los mismos) */
 .contenedor {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   text-align: center;
@@ -258,13 +188,8 @@ onMounted(() => {
 }
 
 @keyframes moverOla {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-50%);
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .texto-porcentaje {
