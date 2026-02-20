@@ -85,7 +85,7 @@ app.post('/api/Sensores/comandos', (req, res) => {
 
 // --- FRONTEND VUE ---
 app.use(express.static(path.join(__dirname, 'client', 'dist')));
-app.get('*', (req, res) => {
+app.get('/(.*)', (req, res) => {
   if (!req.path.startsWith('/api')) {
     res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
   }
