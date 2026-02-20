@@ -93,7 +93,7 @@ onMounted(() => {
 
 <template>
   <div class="contenedor">
-    <h1 class="titulo">💧 AguaSimbolar</h1>
+    <h1 class="titulo">📡 Agua</h1>
     
     <div v-if="errorApi" class="error">{{ errorApi }}</div>
 
