@@ -58,6 +58,30 @@ app.post("/api/Sensores", (req, res) => {
   res.json({ p_out: ultimoComando.p_out });
 });
 
+app.post("/api/Sensores/comandos", (req, res) => {
+  const { relay1ON, relay2ON, relay3ON, relay4ON, lcd } = req.body;
+
+  // 1. Guardamos el estado individual
+  ultimoComando.relay1ON = !!relay1ON;
+  ultimoComando.relay2ON = !!relay2ON;
+  ultimoComando.relay3ON = !!relay3ON;
+  ultimoComando.relay4ON = !!relay4ON;
+  ultimoComando.lcd = !!lcd;
+
+  // 2. EMPAQUETAMOS EN BITS para el p_out
+  let p_out = 0;
+  if (ultimoComando.relay1ON) p_out |= 1;  // Bit 0
+  if (ultimoComando.relay2ON) p_out |= 2;  // Bit 1
+  if (ultimoComando.relay3ON) p_out |= 4;  // Bit 2
+  if (ultimoComando.relay4ON) p_out |= 8;  // Bit 3
+  if (ultimoComando.lcd)      p_out |= 16; // Bit 4 (Valor 16)
+
+  ultimoComando.p_out = p_out;
+
+  console.log(`Comando Recibido de Vue -> p_out: ${p_out} (LCD: ${ultimoComando.lcd ? 'ON' : 'OFF'})`);
+  
+  res.json({ status: "ok", p_out: ultimoComando.p_out });
+});
 
 // 3. Envía el estado al Frontend Vue
 app.get("/api/Sensores/estado", (req, res) => {
