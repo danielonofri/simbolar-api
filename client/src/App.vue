@@ -15,6 +15,13 @@ const rawData = ref('');
 const mostrarCajaNegra = ref(false); // Inicia colapsado
 const datosCompletos = ref(null);
 
+// ... debajo de las otras variables reactivas
+const bitsPulsos = computed(() => {
+  const num = datosCompletos.value?.Sensores?.p_in || 0;
+  // Convertimos a binario (base 2), rellenamos con '0' hasta 8 bits y mapeamos a booleanos
+  return num.toString(2).padStart(8, '0').split('').map(bit => bit === '1');
+});
+
 const relays = ref({
   relay1ON: false,
   relay2ON: false,
@@ -138,7 +145,16 @@ onMounted(() => {
           <div class="card-detalle">
             <ul>
               <li><span>Distancia:</span> <strong>{{ datosCompletos.Sensores.distancia }} cm</strong></li>
-              <li><span>Pulsos (p_in):</span> <strong>{{ datosCompletos.Sensores.p_in }}</strong></li>
+              <li>
+                <span>Pulsos (p_in):</span>
+                <div class="pulsos-display">
+                  <strong class="valor-decimal">{{ datosCompletos.Sensores.p_in }}</strong>
+                  <div class="bits-container">
+                    <div v-for="(on, idx) in bitsPulsos" :key="idx" :class="['bit-cuadrito', on ? 'on' : 'off']">
+                    </div>
+                  </div>
+                </div>
+              </li>
               <li><span>Tanque (h):</span> <strong>{{ datosCompletos.Sensores.tank_h }} cm</strong></li>
             </ul>
           </div>
@@ -167,6 +183,50 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.pulsos-display {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Espacio entre el número y los bits */
+}
+
+.valor-decimal {
+  font-size: 1rem;
+  min-width: 20px;
+  text-align: right;
+  color: #fff;
+}
+
+.bits-container {
+  display: flex;
+  gap: 1px; /* Espacio mínimo para que parezcan una tira de bits */
+  background: #000;
+  padding: 2px;
+  border: 1px solid #444;
+  line-height: 0;
+}
+
+.bit-cuadrito {
+  width: 10px;
+  height: 10px;
+  /* Sin border-radius para que sean cuadrados perfectos */
+}
+
+.bit-cuadrito.on {
+  background-color: #2ecc71; /* Verde brillante */
+  box-shadow: 0 0 4px rgba(46, 204, 113, 0.6);
+}
+
+.bit-cuadrito.off {
+  background-color: #333; /* Gris oscuro apagado */
+}
+
+/* Aseguramos que la lista se alinee bien */
+.card-detalle li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
 .contenedor-principal {
   display: flex;
   flex-direction: column;
