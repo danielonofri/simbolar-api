@@ -2,40 +2,40 @@
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 
-// --- 1. CONFIGURACIÓN ---
+// --- 1. CONFIGURACIÓN Y ESTADO ---
 const API_BASE = 'https://simbolar-api-1bc5.onrender.com/api/Sensores';
+const solapaActiva = ref('monitoreo'); // 'monitoreo', 'tecnico', 'info'
+
 const distanciaReal = ref(0);
 const sensor_m_val = ref(30);
-const porcentaje = ref(0)
-const altura = ref(0)
-const lcdEncendido = ref(true)
-const cargando = ref(false)
-const errorApi = ref('')
+const porcentaje = ref(0);
+const altura = ref(0);
+const lcdEncendido = ref(true);
+const cargando = ref(false);
+const errorApi = ref('');
 const rawData = ref('');
-const mostrarCajaNegra = ref(false); // Inicia colapsado
 const datosCompletos = ref(null);
-
-const bitsDevices = computed(() => {
-  // Tomamos el valor de p_in que representa los dispositivos/estados
-  const num = datosCompletos.value?.Sensores?.p_in || 0;
-  // Representamos el byte completo (8 bits) para ver el estado de todos los canales
-  return num.toString(2).padStart(8, '0').split('').map(bit => bit === '1');
-});
 
 const relays = ref({
   relay1ON: false,
   relay2ON: false,
   relay3ON: false,
   relay4ON: false
-})
+});
 
 // --- 2. LÓGICA COMPUTADA ---
 const colorAgua = computed(() => {
   const distanciaAlSensor = 300 - altura.value;
   if (altura.value > 0 && distanciaAlSensor <= 30) {
-    return '#f1c40f'; // AMARILLO (Alerta cercanía sensor)
+    return '#f1c40f'; // AMARILLO (Alerta)
   }
-  return porcentaje.value < 20 ? '#e74c3c' : '#3498db';
+  return porcentaje.value < 20 ? '#e74c3c' : '#3498db'; // ROJO o AZUL
+});
+
+const bitsDevices = computed(() => {
+  const num = datosCompletos.value?.Sensores?.p_in || 0;
+  // Representación de un byte (8 bits)
+  return num.toString(2).padStart(8, '0').split('').map(bit => bit === '1');
 });
 
 // --- 3. MÉTODOS ---
@@ -46,7 +46,6 @@ const obtenerDatos = async () => {
 
     if (raiz) {
       datosCompletos.value = raiz;
-      // Formateo con indentación de 2 espacios
       rawData.value = JSON.stringify(raiz, null, 2);
 
       if (raiz.Sensores) {
@@ -68,7 +67,6 @@ const obtenerDatos = async () => {
     }
   } catch (e) {
     console.error("Error capturando datos:", e);
-    errorApi.value = 'Error de conexión con la API';
   }
 };
 
@@ -95,8 +93,8 @@ const alternarLCD = async () => {
 
 const copiarAlPortapapeles = () => {
   navigator.clipboard.writeText(rawData.value)
-    .then(() => alert("JSON copiado"))
-    .catch(err => console.error('Error al copiar', err));
+    .then(() => alert("JSON copiado al portapapeles"))
+    .catch(err => console.error('Error al copiar:', err));
 };
 
 onMounted(() => {
@@ -106,12 +104,18 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="contenedor-principal">
-    <h1 class="titulo">📡 Agua</h1>
+  <div class="contenedor">
+    <h1 class="titulo">📡 AguaSimbolar</h1>
+
+    <div class="tabs-header">
+      <button @click="solapaActiva = 'monitoreo'" :class="{ activa: solapaActiva === 'monitoreo' }">💧 Tanque</button>
+      <button @click="solapaActiva = 'tecnico'" :class="{ activa: solapaActiva === 'tecnico' }">⚙️ Técnico</button>
+      <button @click="solapaActiva = 'info'" :class="{ activa: solapaActiva === 'info' }">📝 Info</button>
+    </div>
 
     <div v-if="errorApi" class="error-banner">{{ errorApi }}</div>
 
-    <div class="tanque-seccion">
+    <div v-if="solapaActiva === 'monitoreo'" class="tab-content">
       <div class="tanque-cuerpo">
         <div class="agua" :style="{ height: porcentaje + '%', backgroundColor: colorAgua }">
           <div class="ola"></div>
@@ -125,114 +129,74 @@ onMounted(() => {
         </div>
       </div>
       <p class="texto-altura">Nivel de agua: {{ altura }} cm</p>
+
+      <div class="controles">
+        <button @click="alternarLCD" :class="['btn-lcd', lcdEncendido ? 'encendido' : 'apagado']" :disabled="cargando">
+          {{ cargando ? 'Enviando...' : (lcdEncendido ? 'Apagar Display' : 'Encender Display') }}
+        </button>
+      </div>
     </div>
 
-    <div class="controles">
-      <button @click="alternarLCD" :class="['btn-lcd', lcdEncendido ? 'encendido' : 'apagado']" :disabled="cargando">
-        {{ cargando ? 'Enviando...' : (lcdEncendido ? 'Apagar Display' : 'Encender Display') }}
-      </button>
-
-      <button @click="mostrarCajaNegra = !mostrarCajaNegra" class="btn-toggle-estado">
-        {{ mostrarCajaNegra ? '▲ Ocultar estado' : '▼ Mostrar estado' }}
-      </button>
-    </div>
-
-    <div v-if="mostrarCajaNegra && datosCompletos" class="seccion-detalle">
-
-      <div class="detalles-container">
+    <div v-if="solapaActiva === 'tecnico'" class="tab-content">
+      <div class="detalles-container" v-if="datosCompletos">
         <h3 class="subtitulo">📊 Datos Técnicos</h3>
         <div class="grid-detalles">
           <div class="card-detalle">
             <ul>
-              <li><span>Distancia:</span> <strong>{{ datosCompletos.Sensores.distancia }} cm</strong></li>
-              <li>
-                <span>Pulsos (p_in):</span>
-                <div class="pulsos-display">
-                  <strong class="valor-decimal">{{ datosCompletos.Sensores.p_in }}</strong>
-                  <div class="bits-container">
-                    <div v-for="(on, idx) in bitsPulsos" :key="idx" :class="['bit-cuadrito', on ? 'on' : 'off']">
-                    </div>
-                  </div>
-                </div>
-              </li>
-              <li><span>Tanque (h):</span> <strong>{{ datosCompletos.Sensores.tank_h }} cm</strong></li>
-            </ul>
-          </div>
-          <div class="card-detalle">
-            <h4>Configuración de Hardware</h4>
-            <ul>
-              <li><span>Distancia:</span> <strong>{{ datosCompletos.Sensores.distancia }} cm</strong></li>
+              <li><span>Distancia:</span> <strong>{{ distanciaReal }} cm</strong></li>
               <li>
                 <span>Devices (p_in):</span>
                 <div class="pulsos-display">
                   <strong class="valor-decimal">{{ datosCompletos.Sensores.p_in }}</strong>
                   <div class="bits-container">
-                    <div v-for="(on, idx) in bitsDevices" :key="idx" :class="['bit-cuadrito', on ? 'on' : 'off']"
-                      :title="'Bit ' + (7 - idx)">
-                    </div>
+                    <div v-for="(on, idx) in bitsDevices" :key="idx" :class="['bit-cuadrito', on ? 'on' : 'off']"></div>
                   </div>
                 </div>
               </li>
               <li><span>Tanque (h):</span> <strong>{{ datosCompletos.Sensores.tank_h }} cm</strong></li>
             </ul>
           </div>
+
+          <div class="card-detalle">
+            <h4>Botones Físicos</h4>
+            <div class="botones-status">
+              <div v-for="(val, key) in datosCompletos.Sensores.botones" :key="key"
+                :class="['indicador-boton', val ? 'activo' : 'inactivo']">
+                {{ key.toUpperCase() }}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="caja-negra-wrapper">
+      <div class="caja-negra-container">
         <div class="caja-negra-header">
-          <span>DEBUG JSON</span>
+          <span>DEBUG JSON DATA</span>
           <button @click="copiarAlPortapapeles" class="btn-copiar">📋 Copiar</button>
         </div>
         <pre class="caja-negra-content">{{ rawData }}</pre>
       </div>
+    </div>
 
+    <div v-if="solapaActiva === 'info'" class="tab-content info-md">
+      <h2>AguaSimbolar IoT</h2>
+      <p>Sistema de monitoreo de nivel de agua en tiempo real.</p>
+      <hr>
+      <h3>Hardware</h3>
+      <ul>
+        <li>NodeMCU / ESP8266</li>
+        <li>Sensor Ultrasónico HC-SR04</li>
+        <li>Relays para control de periféricos</li>
+      </ul>
+      <blockquote>
+        Integridad referencial manejada por código. SaaS con licencia mensual/anual.
+      </blockquote>
     </div>
   </div>
 </template>
 
 <style scoped>
-.pulsos-display {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.bits-container {
-  display: flex;
-  gap: 1px;
-  /* Pegados como bits de un registro */
-  background: #000;
-  padding: 2px;
-  border: 1px solid #444;
-}
-
-.bit-cuadrito {
-  width: 10px;
-  height: 10px;
-  /* Cuadrados sin bordes redondeados */
-}
-
-.bit-cuadrito.on {
-  background-color: #2ecc71;
-  /* Verde activo */
-  box-shadow: 0 0 4px rgba(46, 204, 113, 0.8);
-}
-
-.bit-cuadrito.off {
-  background-color: #222;
-  /* Negro/Gris muy oscuro apagado */
-}
-
-/* Aseguramos que la lista se alinee bien */
-.card-detalle li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-}
-
-.contenedor-principal {
+.contenedor {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -240,21 +204,55 @@ onMounted(() => {
   padding: 40px 20px;
   background-color: #121212;
   color: white;
-  text-align: center;
 }
 
 .titulo {
   font-weight: 300;
+  margin-bottom: 20px;
+}
+
+/* Tabs Navigation */
+.tabs-header {
+  display: flex;
+  width: 100%;
+  max-width: 400px;
+  background: #222;
+  padding: 5px;
+  border-radius: 12px;
   margin-bottom: 25px;
 }
 
+.tabs-header button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #777;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tabs-header button.activa {
+  background: #3498db;
+  color: white;
+}
+
+.tab-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Tanque */
 .tanque-cuerpo {
   position: relative;
   width: 160px;
   height: 220px;
-  margin: 0 auto;
-  background-color: #2c3e50;
-  border: 4px solid #7f8c8d;
+  background-color: #ecf0f1;
+  border: 4px solid #95a5a6;
   border-radius: 15px;
   overflow: hidden;
 }
@@ -263,7 +261,7 @@ onMounted(() => {
   position: absolute;
   bottom: 0;
   width: 100%;
-  transition: height 1s ease, background-color 0.5s;
+  transition: height 1s ease-in-out, background-color 0.5s;
 }
 
 .texto-porcentaje {
@@ -271,23 +269,28 @@ onMounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: bold;
-  color: white;
-  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
+  color: rgba(0, 0, 0, 0.6);
+  z-index: 10;
 }
 
+.texto-altura {
+  margin-top: 10px;
+  color: #bdc3c7;
+}
+
+/* Controles */
 .controles {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 220px;
-  margin-top: 20px;
+  margin-top: 25px;
+  width: 100%;
+  max-width: 250px;
 }
 
 .btn-lcd {
-  padding: 12px;
-  border-radius: 25px;
+  width: 100%;
+  padding: 15px;
+  border-radius: 50px;
   border: none;
   font-weight: bold;
   cursor: pointer;
@@ -299,36 +302,88 @@ onMounted(() => {
 }
 
 .btn-lcd.apagado {
-  background: #c0392b;
+  background: #7f8c8d;
   color: white;
 }
 
-.btn-toggle-estado {
-  background: transparent;
-  border: 1px solid white;
-  color: white;
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.seccion-detalle {
+/* Datos Técnicos & Bits */
+.detalles-container {
   width: 100%;
   max-width: 400px;
-  margin-top: 25px;
-  animation: slideDown 0.3s ease-out;
-}
-
-.detalles-container {
   background: #1e1e1e;
   padding: 15px;
   border-radius: 12px;
-  margin-bottom: 15px;
   border: 1px solid #333;
 }
 
-.caja-negra-wrapper {
+.subtitulo {
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+  margin-bottom: 15px;
+}
+
+.card-detalle li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.pulsos-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bits-container {
+  display: flex;
+  gap: 1px;
+  background: #000;
+  padding: 2px;
+  border: 1px solid #444;
+}
+
+.bit-cuadrito {
+  width: 10px;
+  height: 10px;
+}
+
+.bit-cuadrito.on {
+  background: #2ecc71;
+  box-shadow: 0 0 4px #2ecc71;
+}
+
+.bit-cuadrito.off {
+  background: #333;
+}
+
+/* Botones Físicos */
+.botones-status {
+  display: flex;
+  gap: 5px;
+}
+
+.indicador-boton {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.indicador-boton.activo {
+  background: #27ae60;
+}
+
+.indicador-boton.inactivo {
+  background: #444;
+  color: #777;
+}
+
+/* Caja Negra */
+.caja-negra-container {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 400px;
   background: #000;
   border-radius: 8px;
   border: 1px solid #444;
@@ -345,46 +400,48 @@ onMounted(() => {
 
 .caja-negra-content {
   text-align: left;
-  /* Alineado a la izquierda */
   padding: 15px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
-  color: #00ff00;
-  margin: 0;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #9cdcfe;
   white-space: pre;
-  /* Mantiene indentación */
   overflow-x: auto;
 }
 
-.botones-status {
-  display: flex;
-  gap: 5px;
-  justify-content: center;
-}
-
-.indicador-boton {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.6rem;
-}
-
-.indicador-boton.activo {
-  background: #27ae60;
-}
-
-.indicador-boton.inactivo {
+.btn-copiar {
   background: #444;
+  border: none;
+  color: white;
+  font-size: 0.6rem;
+  border-radius: 3px;
+  cursor: pointer;
 }
 
-@keyframes slideDown {
+/* Info Page */
+.info-md {
+  text-align: left;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.info-md h2 {
+  color: #3498db;
+}
+
+.info-md blockquote {
+  border-left: 4px solid #3498db;
+  padding-left: 10px;
+  color: #888;
+  font-style: italic;
+}
+
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-10px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 </style>
