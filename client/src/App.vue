@@ -32,23 +32,34 @@ const colorAgua = computed(() => {
   }
   return porcentaje.value < 20 ? '#e74c3c' : '#3498db';
 });
-
+const datosCompletos = ref(null); // Para la "caja negra" o solapa de detalles
 const obtenerDatos = async () => {
   try {
     const respuesta = await axios.get(`${API_BASE}/estado`);
     const raiz = respuesta.data.devolver;
 
     if (raiz) {
+      datosCompletos.value = raiz; // Guardamos todo para la solapa
+      rawData.value = JSON.stringify(raiz, null, 2); // Para el debug
+
       if (raiz.Sensores) {
         altura.value = raiz.Sensores.altura_agua || 0;
         porcentaje.value = raiz.Sensores.porcentaje || 0;
-        // CAPTURAMOS ESTOS DOS:
         distanciaReal.value = raiz.Sensores.distancia || 0;
         sensor_m_val.value = raiz.Sensores.sensor_m || 30;
       }
-      // ... resto de tu lógica para Comandos ...
+
+      if (raiz.Comandos) {
+        relays.value = {
+          relay1ON: raiz.Comandos.relay1ON,
+          relay2ON: raiz.Comandos.relay2ON,
+          relay3ON: raiz.Comandos.relay3ON,
+          relay4ON: raiz.Comandos.relay4ON
+        };
+        lcdEncendido.value = raiz.Comandos.lcd;
+      }
     }
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error("Error capturando datos:", e); }
 };
 
 const alternarLCD = async () => {
@@ -127,6 +138,33 @@ const toggleCajaNegra = () => {
         <span v-else>Enviando...</span>
       </button>
     </div>
+
+    <div class="detalles-container" v-if="datosCompletos">
+      <h3 class="subtitulo">📊 Estado Detallado</h3>
+
+      <div class="grid-detalles">
+        <div class="card-detalle">
+          <h4>Parámetros Técnicos</h4>
+          <ul>
+            <li><strong>Distancia:</strong> {{ datosCompletos.Sensores.distancia }} cm</li>
+            <li><strong>Altura Tanque:</strong> {{ datosCompletos.Sensores.tank_h }} cm</li>
+            <li><strong>Margen Sensor:</strong> {{ datosCompletos.Sensores.sensor_m }} cm</li>
+            <li><strong>Pulsos Entrada (p_in):</strong> {{ datosCompletos.Sensores.p_in }}</li>
+          </ul>
+        </div>
+
+        <div class="card-detalle">
+          <h4>Botones Físicos</h4>
+          <div class="botones-status">
+            <div v-for="(val, key) in datosCompletos.Sensores.botones" :key="key"
+              :class="['indicador-boton', val ? 'activo' : 'inactivo']">
+              {{ key.toUpperCase() }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="debug-section">
       <button @click="mostrarCajaNegra = !mostrarCajaNegra" class="btn-debug">
         {{ mostrarCajaNegra ? '▲ Ocultar estado' : '▼ Último estado' }}
@@ -269,5 +307,69 @@ const toggleCajaNegra = () => {
   font-family: monospace;
   font-size: 0.85em;
   overflow-x: auto;
+}
+
+.detalles-container {
+  margin-top: 30px;
+  width: 100%;
+  max-width: 400px;
+  background: #2c3e50;
+  padding: 15px;
+  border-radius: 12px;
+  color: white;
+}
+
+.subtitulo {
+  font-size: 1rem;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #555;
+  padding-bottom: 5px;
+}
+
+.grid-detalles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+}
+
+.card-detalle h4 {
+  font-size: 0.85rem;
+  color: #bdc3c7;
+  margin-bottom: 8px;
+}
+
+.card-detalle ul {
+  list-style: none;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.card-detalle li {
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.botones-status {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.indicador-boton {
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.indicador-boton.activo {
+  background-color: #27ae60;
+  color: white;
+}
+
+.indicador-boton.inactivo {
+  background-color: #7f8c8d;
+  color: #bdc3c7;
 }
 </style>
