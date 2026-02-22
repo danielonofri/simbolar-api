@@ -101,6 +101,16 @@ onMounted(() => {
 const toggleCajaNegra = () => {
   mostrarCajaNegra.value = !mostrarCajaNegra.value;
 };
+
+const copiarAlPortapapeles = () => {
+  navigator.clipboard.writeText(rawData.value)
+    .then(() => {
+      alert("JSON copiado al portapapeles");
+    })
+    .catch(err => {
+      console.error('Error al copiar: ', err);
+    });
+};
 </script>
 
 <template>
@@ -165,15 +175,16 @@ const toggleCajaNegra = () => {
       </div>
     </div>
 
-    <div class="debug-section">
-      <button @click="mostrarCajaNegra = !mostrarCajaNegra" class="btn-debug">
-        {{ mostrarCajaNegra ? '▲ Ocultar estado' : '▼ Último estado' }}
-      </button>
-
-      <div v-if="mostrarCajaNegra" class="caja-negra">
-        <pre><code>{{ rawData }}</code></pre>
+    <div v-if="mostrarCajaNegra" class="caja-negra-container">
+      <div class="caja-negra-header">
+        <span>Raw JSON Data</span>
+        <button @click="copiarAlPortapapeles" class="btn-copiar">
+          📋 Copiar
+        </button>
       </div>
+      <pre class="caja-negra-content">{{ rawData }}</pre>
     </div>
+
   </div>
 </template>
 
