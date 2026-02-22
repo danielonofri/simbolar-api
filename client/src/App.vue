@@ -383,4 +383,55 @@ const copiarAlPortapapeles = () => {
   background-color: #7f8c8d;
   color: #bdc3c7;
 }
+
+.caja-negra-container {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 600px; /* Un poco más ancho para el código */
+  background-color: #1e1e1e; /* Fondo tipo VS Code */
+  border-radius: 8px;
+  border: 1px solid #333;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.caja-negra-header {
+  background-color: #2d2d2d;
+  padding: 8px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #aaa;
+  font-family: sans-serif;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #3f3f3f;
+}
+
+.btn-copiar {
+  background: #444;
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: background 0.2s;
+}
+
+.btn-copiar:hover {
+  background: #666;
+}
+
+.caja-negra-content {
+  margin: 0;
+  padding: 15px;
+  color: #9cdcfe; /* Color de fuente tipo código */
+  font-family: 'Fira Code', 'Source Code Pro', monospace;
+  font-size: 0.85rem;
+  text-align: left; /* Asegura que no se centre */
+  white-space: pre-wrap; /* Mantiene indentación y ajusta líneas largas */
+  word-wrap: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+}
 </style>
