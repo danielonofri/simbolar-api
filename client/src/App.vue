@@ -1,19 +1,19 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-const distanciaReal = ref(0);
-const sensor_m_val = ref(30); // Margen de seguridad definido en tu server.js
-// --- 1. CONFIGURACIÓN DE LA API ---
-const API_BASE = 'https://simbolar-api-1bc5.onrender.com/api/Sensores';
 
-// --- 2. ESTADO DE LA APLICACIÓN ---
+// --- 1. CONFIGURACIÓN ---
+const API_BASE = 'https://simbolar-api-1bc5.onrender.com/api/Sensores';
+const distanciaReal = ref(0);
+const sensor_m_val = ref(30);
 const porcentaje = ref(0)
 const altura = ref(0)
 const lcdEncendido = ref(true)
 const cargando = ref(false)
 const errorApi = ref('')
 const rawData = ref('');
-const mostrarCajaNegra = ref(false);
+const mostrarCajaNegra = ref(false); // Inicia colapsado
+const datosCompletos = ref(null);
 
 const relays = ref({
   relay1ON: false,
@@ -22,25 +22,25 @@ const relays = ref({
   relay4ON: false
 })
 
+// --- 2. LÓGICA COMPUTADA ---
 const colorAgua = computed(() => {
-  // Según tu JSON: tank_h (300) - altura_agua (330 en tu ejemplo) = distancia
-  // Si esa diferencia es menor o igual a 30 (sensor_m), amarillo.
   const distanciaAlSensor = 300 - altura.value;
-
   if (altura.value > 0 && distanciaAlSensor <= 30) {
-    return '#f1c40f'; // AMARILLO
+    return '#f1c40f'; // AMARILLO (Alerta cercanía sensor)
   }
   return porcentaje.value < 20 ? '#e74c3c' : '#3498db';
 });
-const datosCompletos = ref(null); // Para la "caja negra" o solapa de detalles
+
+// --- 3. MÉTODOS ---
 const obtenerDatos = async () => {
   try {
     const respuesta = await axios.get(`${API_BASE}/estado`);
     const raiz = respuesta.data.devolver;
 
     if (raiz) {
-      datosCompletos.value = raiz; // Guardamos todo para la solapa
-      rawData.value = JSON.stringify(raiz, null, 2); // Para el debug
+      datosCompletos.value = raiz;
+      // Formateo con indentación de 2 espacios
+      rawData.value = JSON.stringify(raiz, null, 2);
 
       if (raiz.Sensores) {
         altura.value = raiz.Sensores.altura_agua || 0;
@@ -59,82 +59,62 @@ const obtenerDatos = async () => {
         lcdEncendido.value = raiz.Comandos.lcd;
       }
     }
-  } catch (e) { console.error("Error capturando datos:", e); }
+  } catch (e) {
+    console.error("Error capturando datos:", e);
+    errorApi.value = 'Error de conexión con la API';
+  }
 };
 
 const alternarLCD = async () => {
   cargando.value = true;
   errorApi.value = '';
-
   const nuevoEstado = !lcdEncendido.value;
 
   const payload = {
-    relay1ON: relays.value.relay1ON,
-    relay2ON: relays.value.relay2ON,
-    relay3ON: relays.value.relay3ON,
-    relay4ON: relays.value.relay4ON,
+    ...relays.value,
     lcd: nuevoEstado
   };
 
   try {
-    // 1. Enviamos el comando a la API
     await axios.post(`${API_BASE}/comandos`, payload);
-
-    // 2. Si la API responde OK, actualizamos la interfaz
     lcdEncendido.value = nuevoEstado;
-    cargando.value = false;
   } catch (error) {
-    // 3. Si hay error, lo mostramos en la consola para saber qué falló
-    console.error("DETALLE DEL FALLO:", error.response?.data || error.message);
-
+    console.error("Fallo POST:", error.response?.data || error.message);
     errorApi.value = 'Error al cambiar el LCD';
+  } finally {
     cargando.value = false;
   }
 };
 
-// --- 6. AL INICIAR ---
+const copiarAlPortapapeles = () => {
+  navigator.clipboard.writeText(rawData.value)
+    .then(() => alert("JSON copiado"))
+    .catch(err => console.error('Error al copiar', err));
+};
+
 onMounted(() => {
   obtenerDatos();
   setInterval(obtenerDatos, 3000);
 });
-
-const toggleCajaNegra = () => {
-  mostrarCajaNegra.value = !mostrarCajaNegra.value;
-};
-
-const copiarAlPortapapeles = () => {
-  navigator.clipboard.writeText(rawData.value)
-    .then(() => {
-      alert("JSON copiado al portapapeles");
-    })
-    .catch(err => {
-      console.error('Error al copiar: ', err);
-    });
-};
 </script>
 
 <template>
-  <div class="contenedor">
+  <div class="contenedor-principal">
     <h1 class="titulo">📡 Agua</h1>
 
-    <div v-if="errorApi" class="error">{{ errorApi }}</div>
+    <div v-if="errorApi" class="error-banner">{{ errorApi }}</div>
 
-    <div class="tanque-container">
+    <div class="tanque-seccion">
       <div class="tanque-cuerpo">
         <div class="agua" :style="{ height: porcentaje + '%', backgroundColor: colorAgua }">
-          <div class="ola"
-            :style="{ backgroundImage: `linear-gradient(45deg, ${colorAgua} 25%, transparent 25%, transparent 50%, ${colorAgua} 50%, ${colorAgua} 75%, transparent 75%, transparent)` }">
-          </div>
+          <div class="ola"></div>
         </div>
         <div class="texto-porcentaje">
           <div v-if="altura > 0 && (300 - altura) <= 30">
             <div style="font-size: 1.5rem;">⚠️</div>
             <div style="font-size: 0.5rem; font-weight: bold;">AVISO</div>
           </div>
-
-          <div v-else>
-            {{ porcentaje }}%
-          </div>
+          <div v-else>{{ porcentaje }}%</div>
         </div>
       </div>
       <p class="texto-altura">Nivel de agua: {{ altura }} cm</p>
@@ -142,124 +122,83 @@ const copiarAlPortapapeles = () => {
 
     <div class="controles">
       <button @click="alternarLCD" :class="['btn-lcd', lcdEncendido ? 'encendido' : 'apagado']" :disabled="cargando">
-        <span v-if="!cargando">
-          {{ lcdEncendido ? 'Apagar Display' : 'Encender Display' }}
-        </span>
-        <span v-else>Enviando...</span>
+        {{ cargando ? 'Enviando...' : (lcdEncendido ? 'Apagar Display' : 'Encender Display') }}
+      </button>
+
+      <button @click="mostrarCajaNegra = !mostrarCajaNegra" class="btn-toggle-estado">
+        {{ mostrarCajaNegra ? '▲ Ocultar estado' : '▼ Mostrar estado' }}
       </button>
     </div>
 
-    <div class="detalles-container" v-if="datosCompletos">
-      <h3 class="subtitulo">📊 Estado Detallado</h3>
+    <div v-if="mostrarCajaNegra && datosCompletos" class="seccion-detalle">
 
-      <div class="grid-detalles">
-        <div class="card-detalle">
-          <h4>Parámetros Técnicos</h4>
-          <ul>
-            <li><strong>Distancia:</strong> {{ datosCompletos.Sensores.distancia }} cm</li>
-            <li><strong>Altura Tanque:</strong> {{ datosCompletos.Sensores.tank_h }} cm</li>
-            <li><strong>Margen Sensor:</strong> {{ datosCompletos.Sensores.sensor_m }} cm</li>
-            <li><strong>Pulsos Entrada (p_in):</strong> {{ datosCompletos.Sensores.p_in }}</li>
-          </ul>
-        </div>
-
-        <div class="card-detalle">
-          <h4>Botones Físicos</h4>
-          <div class="botones-status">
-            <div v-for="(val, key) in datosCompletos.Sensores.botones" :key="key"
-              :class="['indicador-boton', val ? 'activo' : 'inactivo']">
-              {{ key.toUpperCase() }}
+      <div class="detalles-container">
+        <h3 class="subtitulo">📊 Datos Técnicos</h3>
+        <div class="grid-detalles">
+          <div class="card-detalle">
+            <ul>
+              <li><span>Distancia:</span> <strong>{{ datosCompletos.Sensores.distancia }} cm</strong></li>
+              <li><span>Pulsos (p_in):</span> <strong>{{ datosCompletos.Sensores.p_in }}</strong></li>
+              <li><span>Tanque (h):</span> <strong>{{ datosCompletos.Sensores.tank_h }} cm</strong></li>
+            </ul>
+          </div>
+          <div class="card-detalle">
+            <h4>Botones Físicos</h4>
+            <div class="botones-status">
+              <div v-for="(val, key) in datosCompletos.Sensores.botones" :key="key"
+                :class="['indicador-boton', val ? 'activo' : 'inactivo']">
+                {{ key.toUpperCase() }}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-if="mostrarCajaNegra" class="caja-negra-container">
-      <div class="caja-negra-header">
-        <span>Raw JSON Data</span>
-        <button @click="copiarAlPortapapeles" class="btn-copiar">
-          📋 Copiar
-        </button>
+      <div class="caja-negra-wrapper">
+        <div class="caja-negra-header">
+          <span>DEBUG JSON</span>
+          <button @click="copiarAlPortapapeles" class="btn-copiar">📋 Copiar</button>
+        </div>
+        <pre class="caja-negra-content">{{ rawData }}</pre>
       </div>
-      <pre class="caja-negra-content">{{ rawData }}</pre>
-    </div>
 
+    </div>
   </div>
 </template>
 
 <style scoped>
-.container {
+.contenedor-principal {
   display: flex;
   flex-direction: column;
   align-items: center;
-
-  /* CAMBIA ESTO: */
-  justify-content: flex-start;
-  /* En lugar de center, que empiece arriba */
   min-height: 100vh;
-  /* Asegura que ocupe todo el alto */
-  padding-top: 50px;
-  /* Dale un aire arriba para que el título no pegue al borde */
-  padding-bottom: 50px;
-  /* Para que la caja negra no pegue al fondo al abrirse */
+  padding: 40px 20px;
+  background-color: #121212;
+  color: white;
+  text-align: center;
 }
 
 .titulo {
-  margin-bottom: 20px;
   font-weight: 300;
-}
-
-.error {
-  background-color: #e74c3c;
-  padding: 10px;
-  border-radius: 5px;
-  margin-bottom: 15px;
-}
-
-.tanque-container {
-  margin-bottom: 30px;
+  margin-bottom: 25px;
 }
 
 .tanque-cuerpo {
   position: relative;
-  width: 180px;
-  height: 240px;
+  width: 160px;
+  height: 220px;
   margin: 0 auto;
-  background-color: #ecf0f1;
-  border: 4px solid #95a5a6;
+  background-color: #2c3e50;
+  border: 4px solid #7f8c8d;
   border-radius: 15px;
   overflow: hidden;
-  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.1);
 }
 
 .agua {
   position: absolute;
   bottom: 0;
-  left: 0;
   width: 100%;
-  transition: height 1s ease-in-out, background-color 0.5s;
-  display: flex;
-  align-items: flex-start;
-}
-
-.ola {
-  width: 200%;
-  height: 15px;
-  background-size: 30px 30px;
-  opacity: 0.5;
-  animation: moverOla 4s linear infinite;
-  margin-top: -10px;
-}
-
-@keyframes moverOla {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-50%);
-  }
+  transition: height 1s ease, background-color 0.5s;
 }
 
 .texto-porcentaje {
@@ -267,171 +206,120 @@ const copiarAlPortapapeles = () => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 2.5em;
+  font-size: 2rem;
   font-weight: bold;
-  color: rgba(0, 0, 0, 0.6);
-  z-index: 10;
-}
-
-.texto-altura {
-  margin-top: 10px;
-  color: #bdc3c7;
+  color: white;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .controles {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  width: 220px;
+  margin-top: 20px;
 }
 
 .btn-lcd {
-  padding: 15px 25px;
+  padding: 12px;
+  border-radius: 25px;
   border: none;
-  border-radius: 50px;
-  cursor: pointer;
-  font-size: 1.1em;
   font-weight: bold;
-  width: 100%;
-  transition: 0.3s;
+  cursor: pointer;
 }
 
 .btn-lcd.encendido {
-  background-color: #27ae60;
+  background: #27ae60;
   color: white;
 }
 
 .btn-lcd.apagado {
-  background-color: #7f8c8d;
+  background: #c0392b;
   color: white;
 }
 
-.btn-lcd:disabled {
-  opacity: 0.6;
-}
-
-.debug-box {
-  margin-top: 30px;
-  background-color: #111;
-  color: #00ff00;
-  padding: 15px;
+.btn-toggle-estado {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 8px;
   border-radius: 8px;
-  text-align: left;
-  font-family: monospace;
-  font-size: 0.85em;
-  overflow-x: auto;
-}
-
-.detalles-container {
-  margin-top: 30px;
-  width: 100%;
-  max-width: 400px;
-  background: #2c3e50;
-  padding: 15px;
-  border-radius: 12px;
-  color: white;
-}
-
-.subtitulo {
-  font-size: 1rem;
-  margin-bottom: 15px;
-  border-bottom: 1px solid #555;
-  padding-bottom: 5px;
-}
-
-.grid-detalles {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 15px;
-}
-
-.card-detalle h4 {
-  font-size: 0.85rem;
-  color: #bdc3c7;
-  margin-bottom: 8px;
-}
-
-.card-detalle ul {
-  list-style: none;
-  padding: 0;
+  cursor: pointer;
   font-size: 0.9rem;
 }
 
-.card-detalle li {
-  margin-bottom: 4px;
+.seccion-detalle {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 25px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.detalles-container {
+  background: #1e1e1e;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  border: 1px solid #333;
+}
+
+.caja-negra-wrapper {
+  background: #000;
+  border-radius: 8px;
+  border: 1px solid #444;
+  overflow: hidden;
+}
+
+.caja-negra-header {
+  background: #222;
+  padding: 5px 10px;
   display: flex;
   justify-content: space-between;
+  font-size: 0.7rem;
+}
+
+.caja-negra-content {
+  text-align: left;
+  /* Alineado a la izquierda */
+  padding: 15px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #00ff00;
+  margin: 0;
+  white-space: pre;
+  /* Mantiene indentación */
+  overflow-x: auto;
 }
 
 .botones-status {
   display: flex;
-  gap: 10px;
+  gap: 5px;
   justify-content: center;
 }
 
 .indicador-boton {
-  padding: 5px 10px;
+  padding: 4px 8px;
   border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: bold;
+  font-size: 0.6rem;
 }
 
 .indicador-boton.activo {
-  background-color: #27ae60;
-  color: white;
+  background: #27ae60;
 }
 
 .indicador-boton.inactivo {
-  background-color: #7f8c8d;
-  color: #bdc3c7;
-}
-
-.caja-negra-container {
-  margin-top: 20px;
-  width: 100%;
-  max-width: 600px; /* Un poco más ancho para el código */
-  background-color: #1e1e1e; /* Fondo tipo VS Code */
-  border-radius: 8px;
-  border: 1px solid #333;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-}
-
-.caja-negra-header {
-  background-color: #2d2d2d;
-  padding: 8px 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #aaa;
-  font-family: sans-serif;
-  font-size: 0.8rem;
-  border-bottom: 1px solid #3f3f3f;
-}
-
-.btn-copiar {
   background: #444;
-  border: none;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.7rem;
-  transition: background 0.2s;
 }
 
-.btn-copiar:hover {
-  background: #666;
-}
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
 
-.caja-negra-content {
-  margin: 0;
-  padding: 15px;
-  color: #9cdcfe; /* Color de fuente tipo código */
-  font-family: 'Fira Code', 'Source Code Pro', monospace;
-  font-size: 0.85rem;
-  text-align: left; /* Asegura que no se centre */
-  white-space: pre-wrap; /* Mantiene indentación y ajusta líneas largas */
-  word-wrap: break-word;
-  max-height: 400px;
-  overflow-y: auto;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
